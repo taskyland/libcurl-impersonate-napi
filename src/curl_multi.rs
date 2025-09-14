@@ -538,7 +538,7 @@ extern "C" fn timer_callback(
   let result = if let Ok(mut data) = data_arc.try_lock() {
     let keep_going = (data.timer)(TimerData {
       multi_id: get_ptr_address(_multi),
-      timeout_ms,
+      timeout_ms: timeout_ms as i64,
     });
     if keep_going {
       0
