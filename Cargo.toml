@@ -1,0 +1,35 @@
+
+[package]
+authors = ["taskylizard"]
+edition = "2021"
+name    = "libcurl_impersonate"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+libloading = "0.8.8"
+napi = { version = "3", default-features = false, features = [
+  "napi4",
+  "tokio_rt",
+  "async",
+] }
+napi-derive = "3"
+once_cell = "1.21.3"
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1.0", features = ["v4"] }
+
+[build-dependencies]
+napi-build = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winsock2"] }
+
+[profile.release]
+lto   = true
+strip = "symbols"
