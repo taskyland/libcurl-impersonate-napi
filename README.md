@@ -11,6 +11,14 @@ A Node.js binding for libcurl-impersonate that allows HTTP requests with browser
 - **Multi-handle Support**: Concurrent request processing with curl multi interface
 - **Cross-platform**: Works on Windows, macOS, Linux (including musl), and ARM architectures
 
+## Security
+
+This package depends on shared libraries of https://github.com/lexiforest/curl-impersonate in order to function. By default, this is automatically selected depending on your platform and it's default installation path of the platform's package manager. However, to exercise caution, you should make sure to download exactly from the repository `https://github.com/lexiforest/curl-impersonate` manually, check sha256 hashes, and use `setLibPath(/path/to/your/downloaded/libcurl-impersonate.so)` before using this package's functions. This makes sure you are not dealing with an tampered copy and are using an updated version.
+
+If you believe you have found a security vulnerability in `libcurl-impersonate-napi`, we encourage you to responsibly disclose this and NOT open a public issue. We will investigate all legitimate reports.
+
+Our preference is that you make use of GitHub's private vulnerability reporting feature to disclose potential security vulnerabilities in our Open Source Software. To do this, please visit https://github.com/taskyland/libcurl-impersonate-napi/security and click the "Report a vulnerability" button.
+
 ## Installation
 
 ```bash
