@@ -2,7 +2,6 @@ use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
-// Use RwLock instead of mutable static, safer
 static LIB_PATH: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
 
 #[napi]

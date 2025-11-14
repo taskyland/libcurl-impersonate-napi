@@ -1,4 +1,4 @@
-use napi::bindgen_prelude::{Buffer, Either3};
+use napi::bindgen_prelude::{AsyncTask, Buffer, Either3};
 use napi::{Either, Error, Result, Status};
 use napi_derive::napi;
 use std::cell::UnsafeCell;
@@ -13,7 +13,6 @@ use crate::{
   loader::{napi_load_library, CurlFunctions, CurlHandle, CurlSlist},
 };
 
-// Simple memory write callback
 extern "C" fn write_data(
   ptr: *mut c_char,
   size: usize,
@@ -29,6 +28,39 @@ extern "C" fn write_data(
   real_size
 }
 
+// use AsyncTask execution, passing only a usize handle across threads to avoid the Send constraint of raw pointers
+pub struct PerformTask {
+  handle: usize,
+}
+
+impl napi::Task for PerformTask {
+  type Output = ();
+  type JsValue = ();
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    unsafe {
+      let lib = napi_load_library()?;
+      let code = (lib.easy_perform)(self.handle as CurlHandle);
+      if code != 0 {
+        let error = curl_easy_error(code);
+        return Err(Error::from_reason(format!(
+          "failed with code: {} message:{}",
+          code, error
+        )));
+      }
+      Ok(())
+    }
+  }
+
+  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> napi::Result<Self::JsValue> {
+    Ok(())
+  }
+
+  fn reject(&mut self, _env: napi::Env, err: Error) -> Result<Self::JsValue> {
+    Err(err)
+  }
+}
+
 #[napi]
 pub struct Curl {
   pub closed: bool,
@@ -40,7 +72,6 @@ pub struct Curl {
   req_body: UnsafeCell<Vec<u8>>,
 }
 
-// UnsafeCell requires manual implementation of Send and Sync
 unsafe impl Send for Curl {}
 unsafe impl Sync for Curl {}
 
@@ -65,7 +96,7 @@ impl Curl {
         handle,
         header_buffer: UnsafeCell::new(Vec::new()),
         content_buffer: UnsafeCell::new(Vec::new()),
-        req_header: UnsafeCell::new(None), // Initialize headers list
+        req_header: UnsafeCell::new(None),
         req_body: UnsafeCell::new(Vec::new()),
       };
 
@@ -73,7 +104,6 @@ impl Curl {
     }
   }
 
-  /// Initialize data callbacks
   #[napi]
   pub fn init(&self) {
     log_info!("Curl", "Initializing curl data callbacks");
@@ -108,18 +138,18 @@ impl Curl {
         self.header_buffer.get() as *mut c_void,
       );
 
-      // Set response header data storage
+      // set response header data storage
       (self.lib.easy_setopt)(
         self.handle,
         CurlOpt::HeaderData as c_int,
         self.header_buffer.get() as *mut c_void,
       );
 
-      // *** Important: Enable cookie engine ***
+      // enable cookie jar engine
       (self.lib.easy_setopt)(
         self.handle,
         CurlOpt::CookieJar as c_int,
-        std::ptr::null::<c_void>(), // Use in-memory cookie jar
+        std::ptr::null::<c_void>(), // use in-memory cookie jar
       );
     }
   }
@@ -343,13 +373,14 @@ impl Curl {
     log_info!("Curl", "perform");
     self.result(unsafe { (self.lib.easy_perform)(self.handle) })
   }
+
   #[napi]
-  pub async fn perform(&self) -> Result<()> {
+  pub async fn perform_old(&self) -> Result<()> {
     // Ensure data callback is initialized
     self.init();
     log_info!("Curl", "perform");
-    // self.result(unsafe { (self.lib.easy_perform)(self.handle) })
 
+    // In order to satisfy the Send constraint, only integer handle values are passed across threads
     let handle = self.handle as usize;
     tokio::task::spawn_blocking(move || {
       unsafe {
@@ -368,6 +399,16 @@ impl Curl {
     })
     .await
     .map_err(|e| Error::from_reason(format!("Tokio join error: {e}")))?
+  }
+
+  /// Use AsyncTask to perform curl request, for better performance.
+  /// The older perform implementation is still available for compatibility as perform_old.
+  #[napi]
+  pub fn perform(&self) -> Result<AsyncTask<PerformTask>> {
+    self.init();
+    log_info!("Curl", "perform (AsyncTask)");
+    let handle = self.handle as usize;
+    Ok(AsyncTask::new(PerformTask { handle }))
   }
 
   /// Get response header data

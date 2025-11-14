@@ -53,6 +53,88 @@ struct MultiData {
   timer: Box<dyn FnMut(TimerData) -> bool + Send>,
 }
 
+pub struct MultiPollTask {
+  handle: usize,
+  timeout_ms: i32,
+}
+
+impl napi::Task for MultiPollTask {
+  type Output = i32;
+  type JsValue = ();
+
+  fn compute(&mut self) -> Result<Self::Output> {
+    let mut remaining = 0;
+    unsafe {
+      let extra_fds: *mut CurlWaitFd = std::ptr::null_mut();
+      let lib = napi_load_library()?;
+      let code = (lib.multi_poll)(
+        self.handle as CurlMultiHandle,
+        extra_fds,
+        0,
+        self.timeout_ms,
+        &mut remaining,
+      );
+      if code != 0 {
+        return Err(Error::from_reason(format!(
+          "failed with code: {} message: {}",
+          code,
+          curl_multi_error(code)
+        )));
+      }
+    }
+    Ok(remaining)
+  }
+
+  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> Result<Self::JsValue> {
+    Ok(())
+  }
+
+  fn reject(&mut self, _env: napi::Env, err: Error) -> Result<Self::JsValue> {
+    Err(err)
+  }
+}
+
+pub struct MultiWaitTask {
+  handle: usize,
+  timeout_ms: i32,
+}
+
+impl napi::Task for MultiWaitTask {
+  type Output = i32;
+  type JsValue = ();
+
+  fn compute(&mut self) -> Result<Self::Output> {
+    let mut remaining = 0;
+    unsafe {
+      let extra_fds: *mut CurlWaitFd = std::ptr::null_mut();
+      let lib = napi_load_library()?;
+      let code = (lib.multi_wait)(
+        self.handle as CurlMultiHandle,
+        extra_fds,
+        0,
+        self.timeout_ms,
+        &mut remaining,
+      );
+      if code != 0 {
+        return Err(Error::from_reason(format!(
+          "failed with code: {} message: {}",
+          code,
+          curl_multi_error(code)
+        )));
+      }
+    }
+    Ok(remaining)
+  }
+
+  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> Result<Self::JsValue> {
+    Ok(())
+  }
+
+  fn reject(&mut self, _env: napi::Env, err: Error) -> Result<Self::JsValue> {
+    Err(err)
+  }
+}
+
 #[napi(js_name = "CurlMulti")]
 pub struct CurlMulti {
   pub closed: bool,
@@ -62,7 +144,6 @@ pub struct CurlMulti {
   timer_data_ptr: Option<*const Mutex<MultiData>>,
 }
 
-// Manually implement Send and Sync traits
 unsafe impl Send for CurlMulti {}
 unsafe impl Sync for CurlMulti {}
 
@@ -282,67 +363,17 @@ impl CurlMulti {
   }
 
   #[napi]
-  pub async fn poll(&self, timeout_ms: i32) -> Result<i32> {
+  pub fn poll(&self, timeout_ms: i32) -> Result<AsyncTask<MultiPollTask>> {
     self.check_close()?;
-    // Move only the raw pointer
     let handle = self.raw.handle as usize;
-    spawn_blocking(move || {
-      let mut remaining = 0;
-      unsafe {
-        let extra_fds: *mut CurlWaitFd = std::ptr::null_mut();
-        // Restore lib reference
-        let lib = napi_load_library()?;
-        let code = (lib.multi_poll)(
-          handle as CurlMultiHandle,
-          extra_fds,
-          0,
-          timeout_ms,
-          &mut remaining,
-        );
-        if code != 0 {
-          return Err(Error::from_reason(format!(
-            "failed with code: {} message: {}",
-            code,
-            curl_multi_error(code)
-          )));
-        }
-      }
-      Ok(remaining)
-    })
-    .await
-    .map_err(|e| Error::from_reason(format!("Tokio join error: {e}")))?
+    Ok(AsyncTask::new(MultiPollTask { handle, timeout_ms }))
   }
 
   #[napi]
-  pub async fn wait(&self, timeout_ms: i32) -> Result<i32> {
+  pub fn wait(&self, timeout_ms: i32) -> Result<AsyncTask<MultiWaitTask>> {
     self.check_close()?;
-    // Move only the raw pointer
     let handle = self.raw.handle as usize;
-    spawn_blocking(move || {
-      let mut remaining = 0;
-      unsafe {
-        let extra_fds: *mut CurlWaitFd = std::ptr::null_mut();
-        // Restore lib reference
-        let lib = napi_load_library()?;
-        let code = (lib.multi_wait)(
-          handle as CurlMultiHandle,
-          extra_fds,
-          0,
-          timeout_ms,
-          &mut remaining,
-        );
-        if code != 0 {
-          return Err(Error::from_reason(format!(
-            "failed with code: {} message: {}",
-            code,
-            curl_multi_error(code)
-          )));
-        }
-      }
-      Ok(remaining)
-    })
-    .await
-    .map_err(|e| Error::from_reason(format!("Tokio join error: {e}")))?
+    Ok(AsyncTask::new(MultiWaitTask { handle, timeout_ms }))
   }
 
   #[napi]

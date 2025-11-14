@@ -71,14 +71,13 @@ pub struct CurlWaitFd {
   pub events: c_short,
   pub revents: c_short,
 }
-// Linked list struct
+
 #[repr(C)]
 pub struct CurlSlistNode {
   pub data: *mut c_char,
   pub next: *mut CurlSlistNode,
 }
 
-// Easy interface function types - Complete version
 pub type CurlEasyInit = unsafe extern "C" fn() -> CurlHandle;
 pub type CurlEasyCleanup = unsafe extern "C" fn(handle: CurlHandle);
 pub type CurlEasySetopt =
@@ -134,7 +133,7 @@ pub type CurlEasySslsExport =
   unsafe extern "C" fn(handle: CurlHandle, ssl_ctx: *mut *mut c_void) -> c_int;
 pub type CurlEasyUpkeep = unsafe extern "C" fn(handle: CurlHandle) -> c_int;
 
-// Multi interface function types - Complete version
+// Multi interface function types
 pub type CurlMultiInit = unsafe extern "C" fn() -> CurlMultiHandle;
 pub type CurlMultiCleanup = unsafe extern "C" fn(handle: CurlMultiHandle) -> c_int;
 pub type CurlMultiPerform =
@@ -242,7 +241,7 @@ pub type CurlShareSetopt =
   unsafe extern "C" fn(share: CurlShare, option: c_int, value: *const c_void) -> c_int;
 pub type CurlShareStrerror = unsafe extern "C" fn(code: c_int) -> *const c_char;
 
-// URL API function types - Complete version
+// URL API function types
 pub type CurlUrlInit = unsafe extern "C" fn() -> CurlUrl;
 pub type CurlUrlCleanup = unsafe extern "C" fn(handle: CurlUrl);
 pub type CurlUrlDup = unsafe extern "C" fn(in_url: CurlUrl) -> CurlUrl;
@@ -260,7 +259,7 @@ pub type CurlUrlGet = unsafe extern "C" fn(
 ) -> c_int;
 pub type CurlUrlStrerror = unsafe extern "C" fn(code: c_int) -> *const c_char;
 
-// Global function types - Complete version
+// Global function types
 pub type CurlGlobalInit = unsafe extern "C" fn(flags: c_long) -> c_int;
 pub type CurlGlobalInitMem = unsafe extern "C" fn(
   flags: c_long,
@@ -337,10 +336,10 @@ pub type CurlPushheaderByname =
   unsafe extern "C" fn(h: *mut c_void, name: *const c_char) -> *mut c_char;
 pub type CurlPushheaderBynum = unsafe extern "C" fn(h: *mut c_void, num: usize) -> *mut c_char;
 
-// Store all loaded functions - Complete version
+// Store all loaded functions
 #[derive(Debug, Clone)]
 pub struct CurlFunctions {
-  // Easy interface - Complete version
+  // Easy interface
   pub easy_init: Symbol<'static, CurlEasyInit>,
   pub easy_cleanup: Symbol<'static, CurlEasyCleanup>,
   pub easy_setopt: Symbol<'static, CurlEasySetopt>,
@@ -363,7 +362,7 @@ pub struct CurlFunctions {
   pub easy_ssls_export: Symbol<'static, CurlEasySslsExport>,
   pub easy_upkeep: Symbol<'static, CurlEasyUpkeep>,
 
-  // Multi interface - Complete version
+  // Multi interface
   pub multi_init: Symbol<'static, CurlMultiInit>,
   pub multi_cleanup: Symbol<'static, CurlMultiCleanup>,
   pub multi_perform: Symbol<'static, CurlMultiPerform>,
@@ -388,7 +387,7 @@ pub struct CurlFunctions {
   pub slist_append: Symbol<'static, CurlSlistAppend>,
   pub slist_free_all: Symbol<'static, CurlSlistFreeAll>,
 
-  // MIME - Complete version
+  // MIME
   pub mime_init: Symbol<'static, CurlMimeInit>,
   pub mime_free: Symbol<'static, CurlMimeFree>,
   pub mime_addpart: Symbol<'static, CurlMimeAddpart>,
@@ -413,7 +412,7 @@ pub struct CurlFunctions {
   pub share_setopt: Symbol<'static, CurlShareSetopt>,
   pub share_strerror: Symbol<'static, CurlShareStrerror>,
 
-  // URL API - Complete version
+  // URL API
   pub url: Symbol<'static, CurlUrlInit>,
   pub url_cleanup: Symbol<'static, CurlUrlCleanup>,
   pub url_dup: Symbol<'static, CurlUrlDup>,
@@ -421,7 +420,7 @@ pub struct CurlFunctions {
   pub url_get: Symbol<'static, CurlUrlGet>,
   pub url_strerror: Symbol<'static, CurlUrlStrerror>,
 
-  // Global functions - Complete version
+  // Global functions
   pub global_init: Symbol<'static, CurlGlobalInit>,
   pub global_init_mem: Symbol<'static, CurlGlobalInitMem>,
   pub global_cleanup: Symbol<'static, CurlGlobalCleanup>,
@@ -491,7 +490,7 @@ pub fn load_curl_library() -> Result<&'static CurlFunctions, Box<dyn std::error:
     let lib_static: &'static Library = Box::leak(Box::new(lib));
 
     let functions = CurlFunctions {
-      // Easy interface - Complete version
+      // Easy interface
       easy_init: unsafe { lib_static.get(b"curl_easy_init\0")? },
       easy_cleanup: unsafe { lib_static.get(b"curl_easy_cleanup\0")? },
       easy_setopt: unsafe { lib_static.get(b"curl_easy_setopt\0")? },
@@ -514,7 +513,7 @@ pub fn load_curl_library() -> Result<&'static CurlFunctions, Box<dyn std::error:
       easy_ssls_export: unsafe { lib_static.get(b"curl_easy_ssls_export\0")? },
       easy_upkeep: unsafe { lib_static.get(b"curl_easy_upkeep\0")? },
 
-      // Multi interface - Complete version
+      // Multi interface
       multi_init: unsafe { lib_static.get(b"curl_multi_init\0")? },
       multi_cleanup: unsafe { lib_static.get(b"curl_multi_cleanup\0")? },
       multi_perform: unsafe { lib_static.get(b"curl_multi_perform\0")? },
@@ -539,7 +538,7 @@ pub fn load_curl_library() -> Result<&'static CurlFunctions, Box<dyn std::error:
       slist_append: unsafe { lib_static.get(b"curl_slist_append\0")? },
       slist_free_all: unsafe { lib_static.get(b"curl_slist_free_all\0")? },
 
-      // MIME - Complete version
+      // MIME
       mime_init: unsafe { lib_static.get(b"curl_mime_init\0")? },
       mime_free: unsafe { lib_static.get(b"curl_mime_free\0")? },
       mime_addpart: unsafe { lib_static.get(b"curl_mime_addpart\0")? },
@@ -564,7 +563,7 @@ pub fn load_curl_library() -> Result<&'static CurlFunctions, Box<dyn std::error:
       share_setopt: unsafe { lib_static.get(b"curl_share_setopt\0")? },
       share_strerror: unsafe { lib_static.get(b"curl_share_strerror\0")? },
 
-      // URL API - Complete version
+      // URL API
       url: unsafe { lib_static.get(b"curl_url\0")? },
       url_cleanup: unsafe { lib_static.get(b"curl_url_cleanup\0")? },
       url_dup: unsafe { lib_static.get(b"curl_url_dup\0")? },
@@ -572,7 +571,7 @@ pub fn load_curl_library() -> Result<&'static CurlFunctions, Box<dyn std::error:
       url_get: unsafe { lib_static.get(b"curl_url_get\0")? },
       url_strerror: unsafe { lib_static.get(b"curl_url_strerror\0")? },
 
-      // Global functions - Complete version
+      // Global functions
       global_init: unsafe { lib_static.get(b"curl_global_init\0")? },
       global_init_mem: unsafe { lib_static.get(b"curl_global_init_mem\0")? },
       global_cleanup: unsafe { lib_static.get(b"curl_global_cleanup\0")? },
