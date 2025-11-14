@@ -124,6 +124,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install
+      - name: Update npm
+        run: npm install -g npm@latest
       - name: Download all artifacts
         uses: actions/download-artifact@v5
         with:
